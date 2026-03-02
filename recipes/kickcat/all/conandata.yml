@@ -1,4 +1,7 @@
 sources:
+  "v2.4-rc0":
+    url: "https://github.com/leducp/KickCAT/archive/refs/tags/v2.4-rc0.zip"
+    sha256: "5f1d09ba2c79461c8d9fed77a13951fa7abf8d517d45cf951c8ed388a76af7cc"
   "v2.0-rc1":
     url: "https://github.com/leducp/KickCAT/archive/refs/tags/v2.0-rc1.zip"
     sha256: "3feec08fd2718d286a041cb83266479840f7739c1203b4450375ea1f59f234c8"
