@@ -18,24 +18,26 @@ class KickCATRecipe(ConanFile):
     topics = ("ethercat")
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
-    options = {"shared": [True, False], "fPIC": [True, False]}
-    default_options = {"shared": False, "fPIC": True}
+    options = {"shared": [True, False], "fPIC": [True, False], "with_esi_parser": [True, False]}
+    default_options = {"shared": False, "fPIC": True, "with_esi_parser": False}
 
     def source(self):
+        # This method is used by Conan Center Index to fetch sources
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
+         
 
     def configure(self):
         if self.options.get_safe("shared"):
             self.options.rm_safe("fPIC")
 
     def layout(self):
-        cmake_layout(self, src_folder="src")
+        cmake_layout(self)
 
     def validate(self):
         if self.settings.compiler.get_safe("cppstd"):
             check_min_cppstd(self, 17)
 
-        if self.settings.os != "Linux":
+        if self.settings.os not in ["Linux", "baremetal"]:
             raise ConanInvalidConfiguration(
                 f"{self.ref} is not supported on {self.settings.os}.")
 
@@ -46,13 +48,19 @@ class KickCATRecipe(ConanFile):
         if self.settings.compiler == 'gcc' and Version(self.settings.compiler.version) < "7":
             raise ConanInvalidConfiguration("Building requires GCC >= 7")
 
+    def requirements(self):
+        self.requires("argparse/3.2")
+        if self.options.with_esi_parser:
+            self.requires("tinyxml2/10.0.0")
+
+
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.cache_variables["ENABLE_ESI_PARSER"] = bool(self.options.with_esi_parser)
         tc.cache_variables["BUILD_UNIT_TESTS"] = "OFF"
         tc.cache_variables["BUILD_EXAMPLES"] = "OFF"
         tc.cache_variables["BUILD_SIMULATION"] = "OFF"
         tc.cache_variables["BUILD_TOOLS"] = "OFF"
-        tc.cache_variables["DEBUG"] = "OFF"
         tc.generate()
 
     def build(self):
@@ -61,8 +69,11 @@ class KickCATRecipe(ConanFile):
         cmake.build()
 
     def package(self):
-        copy(self, "*.h", os.path.join(self.source_folder, "include"),
-             os.path.join(self.package_folder, "include"))
+        src_folders = ["lib/include", "lib/slave/include", "lib/slave/driver/include", "lib/master/include"]
+        for folder in src_folders:
+            copy(self, "*.h", os.path.join(self.source_folder, folder),
+                os.path.join(self.package_folder, "include"))
+
         copy(self, "*.a", self.build_folder,
              os.path.join(self.package_folder, "lib"), keep_path=False)
         copy(self, "*.so", self.build_folder,
