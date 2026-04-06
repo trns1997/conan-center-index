@@ -2,13 +2,12 @@ import os
 
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
-from conan.tools.files import get, rmdir, copy
+from conan.tools.files import get, rmdir, copy, apply_conandata_patches
 
 required_conan_version = ">=2"
 
 class PinocchioConan(ConanFile):
     name = "pinocchio"
-    package_type = "shared-library"
     license = ("BSD-2-Clause")
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "https://stack-of-tasks.github.io/pinocchio/"
@@ -18,13 +17,26 @@ class PinocchioConan(ConanFile):
         "motion-planning", "ros", "rigid-body-dynamics", "analytical-derivatives",
         )
 
+    exports_sources = "patches/**"
     settings = "os", "compiler", "build_type", "arch"
     options = {
-        "with_collision_support": [True, False]
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "with_collision_support": [True, False],
     }
     default_options = {
-        "with_collision_support": False
+        "shared": False,
+        "fPIC": True,
+        "with_collision_support": False,
     }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
 
     def layout(self):
         cmake_layout(self, src_folder="src")
@@ -42,9 +54,11 @@ class PinocchioConan(ConanFile):
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
+        apply_conandata_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.cache_variables["BUILD_PYTHON_INTERFACE"] = False
         tc.cache_variables["BUILD_TESTING"] = False
         tc.cache_variables["BUILD_EXAMPLES"] = False
